@@ -1,0 +1,48 @@
+version: '3.3'
+
+services:
+  db:
+    image: postgres:13.10
+    restart: on-failure
+    environment:
+      POSTGRES_USER: blog
+      POSTGRES_PASSWORD: qwerty12345
+      POSTGRES_DB: blog
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: pg_isready -U blog -d blog
+      interval: 30s
+      timeout: 3s
+      retries: 3
+
+  backend:
+    build: ../backend
+#    image: linar04011994/infra-backend:latest
+    command: gunicorn blog.wsgi --bind 0:8000
+    volumes:
+      - static_vol:/app/static/
+      - media_vol:/app/media/
+    depends_on:
+      - db
+    env_file:
+      - ../backend/.env
+
+  nginx:
+    image: nginx:1.22.1
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/templates/default.conf.template
+      - static_vol:/var/html/static
+      - media_vol:/var/html/media
+    depends_on:
+      - backend
+
+volumes:
+  pg_data:
+  static_vol:
+  media_vol:
+
